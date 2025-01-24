@@ -1,0 +1,192 @@
+﻿@page "/Convertfiles"
+
+<!doctype html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel to JSON Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9fafc;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        h1 {
+            color: #4CAF50;
+            text-align: center;
+        }
+
+        p {
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+        }
+
+        input[type="file"] {
+            display: block;
+            margin: 20px auto;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        #status {
+            text-align: center;
+            font-size: 1.2em;
+            color: #333;
+            margin-top: 20px;
+        }
+
+        #output {
+            margin-top: 30px;
+        }
+
+        h2 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        pre {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            max-height: 400px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+            button:hover {
+                background-color: #45a049;
+            }
+
+        footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #777;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Excel to JSON Converter</h1>
+        <p>เลือกไฟล์ Excel (หลายไฟล์ได้) เพื่อแปลงเป็นรูปแบบ JSON:</p>
+        <input type="file" id="fileInput" accept=".xlsx, .xls" multiple />
+        <div id="status">ยังไม่ได้เลือกไฟล์...</div>
+        <div id="output">
+            <h2>ข้อมูลที่แปลงเป็น JSON:</h2>
+            <pre id="jsonOutput">ยังไม่มีไฟล์ที่อัปโหลด...</pre>
+        </div>
+        <div class="button-container">
+            <button id="downloadBtn" style="display: none;">ดาวน์โหลดไฟล์ JSON</button>
+        </div>
+    </div>
+    <footer>
+        &copy; 2025 Excel to JSON Converter | Designed for PSU HATYAI
+    </footer>
+
+    <script>
+        let convertedJson = [];
+
+        document.getElementById('fileInput').addEventListener('change', function (event) {
+            const files = event.target.files;
+            const statusElement = document.getElementById('status');
+            if (files.length === 0) {
+                alert('กรุณาเลือกไฟล์อย่างน้อยหนึ่งไฟล์!');
+                return;
+            }
+
+            statusElement.textContent = 'กำลังประมวลผล...';
+            convertedJson = []; // Reset the converted data
+
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+
+                        const sheetJson = XLSX.utils.sheet_to_json(worksheet, { raw: true });
+                        convertedJson.push({
+                            fileName: file.name,
+                            data: sheetJson
+                        });
+
+                        const output = JSON.stringify(convertedJson, null, 4);
+                        document.getElementById('jsonOutput').textContent = output;
+
+                        document.getElementById('downloadBtn').style.display = 'inline-block';
+                        statusElement.textContent = 'ประมวลผลเสร็จสิ้น!';
+                    } catch (error) {
+                        statusElement.textContent = 'เกิดข้อผิดพลาดในการประมวลผล!';
+                        console.error(error);
+                    }
+                };
+
+                reader.readAsArrayBuffer(file);
+            });
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', function () {
+            if (convertedJson.length === 0) {
+                alert('ไม่มีข้อมูล JSON ให้ดาวน์โหลด!');
+                return;
+            }
+
+            const jsonBlob = new Blob([JSON.stringify(convertedJson, null, 4)], { type: 'application/json' });
+            const url = URL.createObjectURL(jsonBlob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'converted_files.json';
+            document.body.appendChild(link);
+            link.click();
+
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        });
+    </script>
+</body>
+
+</html>
+
